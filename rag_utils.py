@@ -24,6 +24,8 @@ def _load_resources():
     """Load the model, FAISS index and metadata once"""
     global _embedding_model, _faiss_index, _chunks, _metadata, _anthropic_client
 
+    # global _embedding_model, _collection, _anthropic_client
+
     if _embedding_model is None:
         _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
     
@@ -32,6 +34,15 @@ def _load_resources():
         if not os.path.exists(index_path):
             raise FileExistsError(f"{index_path} not found. Run `python ingest.py` first.")
         _faiss_index = faiss.read_index(index_path)
+
+    # if _collection is None:
+    #     if not os.path.exists(VECTOR_DB_DIR):
+    #         raise FileNotFoundError(
+    #             f"{VECTOR_DB_DIR}/ not found. Run `python ingest.py` first.")
+
+    # No separate metadata.pkl to load -- Chroma keeps text + metadata together with the vectors.
+    # client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
+    # _collection = client.get_collection("papers")
 
     if _chunks is None or _metadata is None:
         metapath = os.path.join(VECTOR_DB_DIR, "metadata.pkl")
@@ -50,6 +61,40 @@ def retrieve(query: str, top_k: int = TOP_K) -> list[dict]:
     Returns a list of dicts: {text, paper, chunk_index, score}
     """
     _load_resources()
+
+    """
+    Embed the query and search Chroma for the most similar chunks.
+    Returns a list of dicts: {text, paper, chunk_index, score}
+    -- SAME return shape as the FAISS version, so nothing downstream
+    (answer_question, server.py's tools, app.py) needs to change.
+    """
+    # _load_resources()
+
+    # query_vector = _embedding_model.encode([query], convert_to_numpy=True).tolist()
+
+    # results = _collection.query(query_embeddings=query_vector, n_results=top_k)
+
+    # output = []
+    # documents = results["documents"][0]
+    # metadatas = results["metadatas"][0]
+    # distances = results["distances"][0]
+
+    # for text, meta, distance in zip(documents, metadatas, distances):
+    #     output.append({
+    #         "text": text,
+    #         "paper": meta["paper"],
+    #         "chunk_index": meta["chunk_index"],
+    #         # Chroma returns a distance (lower = more similar); convert to a
+    #         # similarity-style score so it still reads the same as before
+    #         "score": round(1 - distance, 3),
+    #     })
+    # return output
+
+    # def list_indexed_papers() -> list[str]:
+    #     _load_resources()
+    #     all_data = _collection.get()  # fetches all stored metadata
+    #     papers = sorted(set(m["paper"] for m in all_data["metadatas"]))
+    #     return papers
 
     query_vector = _embedding_model.encode([query], convert_to_numpy=True).astype("float32")
     faiss.normalize_L2(query_vector)

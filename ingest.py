@@ -46,6 +46,7 @@ def main():
 
     all_chunks = []     # list of chunk text
     all_metadate = []       # parallel list of dicts: {paper, chunk_index}
+    # all_ids = []    # Chroma requires a unique string id per entry
 
     pdf_files = [f for f in os.listdir(PAPERS_DIR) if f.lower().endswith(".pdf")]
     print(f"Found {len(pdf_files)} PDF(s): {pdf_files}")
@@ -61,10 +62,19 @@ def main():
         for i, chunk in enumerate(chunks):
             all_chunks.append(chunk)
             all_metadate.append({"paper": paper_name, "chunk_index": i})
+            # all_ids.append(f"{paper_name}_{i}")
 
     print(f"\nEmbedding {len(all_chunks)} chunks total ...")
-    embeddings = model.encode(all_chunks, show_progress_bar =  True, convert_to_numpy= True)
+    embeddings = model.encode(all_chunks, show_progress_bar = True, convert_to_numpy= True)
     embeddings = embeddings.astype("float32")
+
+    # print("Writing to ChromaDB ...")
+    # client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
+    # try:
+        # client.delete_collection("papers")
+    # except Exception:
+    #    pass
+    # collection = client.create_collection("papers")
 
     # Normalize so inner-product search behaves like cosine similarity
     faiss.normalize_L2(embeddings)
@@ -76,6 +86,10 @@ def main():
     faiss.write_index(index, os.path.join(VECTOR_DB_DIR, "faiss.index"))
     with open(os.path.join(VECTOR_DB_DIR, "metadata.pkl"), "wb") as f:
         pickle.dump({"chunks": all_chunks, "metadata": all_metadate}, f)
+
+    # collection.add(
+    #       documents = all_chunks, embeddings = embeddings.tolist(), metadatas=all_metadata, ids=all_ids)
+    # )
 
     print(f"\nDone. Indexed {len(all_chunks)} chunks from {len(pdf_files)} papers.")
     print(f"Saved to {VECTOR_DB_DIR}/faiss.index and {VECTOR_DB_DIR}/metadata.pkl")

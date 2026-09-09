@@ -1,11 +1,10 @@
-rag-mcp-papers/.env
-rag-mcp-papers/.venv/
-rag-mcp-papers/vector_db/
+.env
+.venv/
 __pycache__/
 *.pyc 
 
-rag-mcp-papers/vector_db/
-rag-mcp-papers/data/papers/*.pdf
+vector_db/
+data/papers/*.pdf
 
 server.log
 *.log
